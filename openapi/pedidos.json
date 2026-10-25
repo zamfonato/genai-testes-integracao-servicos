@@ -1,0 +1,280 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Serviço de Pedidos",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/pedidos": {
+      "post": {
+        "summary": "Criar Pedido",
+        "operationId": "criar_pedido_pedidos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pedido"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Estoque insuficiente para algum item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos ou produto inexistente no estoque"
+          },
+          "502": {
+            "description": "Estoque respondeu fora do contrato",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Estoque indisponível (timeout, conexão ou erro)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pedidos/{pedido_id}": {
+      "get": {
+        "summary": "Consultar Pedido",
+        "operationId": "consultar_pedido_pedidos__pedido_id__get",
+        "parameters": [
+          {
+            "name": "pedido_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pedido Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pedido"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pedido não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Erro": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "Erro"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ItemIn": {
+        "properties": {
+          "sku": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Sku"
+          },
+          "quantidade": {
+            "type": "integer",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Quantidade"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sku",
+          "quantidade"
+        ],
+        "title": "ItemIn"
+      },
+      "ItemPedido": {
+        "properties": {
+          "sku": {
+            "type": "string",
+            "title": "Sku"
+          },
+          "quantidade": {
+            "type": "integer",
+            "title": "Quantidade"
+          },
+          "reserva_id": {
+            "type": "string",
+            "title": "Reserva Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sku",
+          "quantidade",
+          "reserva_id"
+        ],
+        "title": "ItemPedido"
+      },
+      "Pedido": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "cliente": {
+            "type": "string",
+            "title": "Cliente"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemPedido"
+            },
+            "type": "array",
+            "title": "Itens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "cliente",
+          "status",
+          "itens"
+        ],
+        "title": "Pedido"
+      },
+      "PedidoIn": {
+        "properties": {
+          "cliente": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Cliente"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemIn"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Itens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cliente",
+          "itens"
+        ],
+        "title": "PedidoIn"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
