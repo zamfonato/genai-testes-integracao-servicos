@@ -38,17 +38,29 @@ class ClienteEstoque:
             raise EstoqueIndisponivel("Estoque não respondeu a tempo") from erro
         except httpx.TransportError as erro:
             raise EstoqueIndisponivel("Falha de conexão com o estoque") from erro
+        except httpx.HTTPError as erro:
+            raise RespostaInvalida("Resposta do estoque ilegível") from erro
 
         if resposta.status_code == 201:
-            try:
-                return resposta.json()["reserva_id"]
-            except (ValueError, KeyError) as erro:
-                raise RespostaInvalida("Resposta do estoque fora do contrato") from erro
+            return self._reserva_id(resposta)
+        if resposta.is_success:
+            raise RespostaInvalida(f"Estoque respondeu {resposta.status_code}, fora do contrato")
         if resposta.status_code == 404:
             raise ProdutoNaoEncontrado(f"Produto {sku} não existe")
         if resposta.status_code == 409:
             raise EstoqueInsuficiente(f"Estoque insuficiente para {sku}")
         raise EstoqueIndisponivel(f"Estoque respondeu {resposta.status_code}")
+
+    @staticmethod
+    def _reserva_id(resposta: httpx.Response) -> str:
+        try:
+            corpo = resposta.json()
+        except ValueError as erro:
+            raise RespostaInvalida("Resposta do estoque fora do contrato") from erro
+        reserva_id = corpo.get("reserva_id") if isinstance(corpo, dict) else None
+        if not isinstance(reserva_id, str) or not reserva_id:
+            raise RespostaInvalida("Resposta do estoque fora do contrato")
+        return reserva_id
 
     def cancelar(self, reserva_id: str) -> None:
         # Compensação em melhor esforço: se falhar, a reserva fica no estoque.

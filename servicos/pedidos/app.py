@@ -64,6 +64,7 @@ def create_app(http_estoque: httpx.Client, repositorio: RepositorioPedidos | Non
         responses={
             409: {"model": Erro, "description": "Estoque insuficiente para algum item"},
             422: {"description": "Dados inválidos ou produto inexistente no estoque"},
+            500: {"model": Erro, "description": "Falha ao gravar o pedido (reservas são canceladas)"},
             502: {"model": Erro, "description": "Estoque respondeu fora do contrato"},
             503: {"model": Erro, "description": "Estoque indisponível (timeout, conexão ou erro)"},
         },
@@ -75,13 +76,20 @@ def create_app(http_estoque: httpx.Client, repositorio: RepositorioPedidos | Non
                 reserva_id = estoque.reservar(item.sku, item.quantidade)
                 itens.append({"sku": item.sku, "quantidade": item.quantidade, "reserva_id": reserva_id})
         except ErroEstoque as erro:
-            for reservado in itens:
-                estoque.cancelar(reservado["reserva_id"])
+            compensar(itens)
             raise HTTPException(STATUS_POR_ERRO[type(erro)], str(erro))
 
         pedido = {"id": str(uuid4()), "cliente": dados.cliente, "status": "confirmado", "itens": itens}
-        repo.salvar(pedido)
+        try:
+            repo.salvar(pedido)
+        except Exception:
+            compensar(itens)
+            raise HTTPException(500, "Falha ao gravar o pedido")
         return pedido
+
+    def compensar(itens: list[dict]) -> None:
+        for reservado in itens:
+            estoque.cancelar(reservado["reserva_id"])
 
     @app.get(
         "/pedidos/{pedido_id}",
